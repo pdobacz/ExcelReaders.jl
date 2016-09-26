@@ -20,7 +20,7 @@ using DataFrames
   @pytest function showxlfile(file)
     buffer = IOBuffer()
     show(buffer, file)
-    @test takebuf_string(buffer) == "ExcelFle <TestData.xlsx>"
+    @test takebuf_string(buffer) == "ExcelFile <TestData.xlsx>"
   end
 
   #=
