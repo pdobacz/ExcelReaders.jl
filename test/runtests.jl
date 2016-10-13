@@ -18,6 +18,12 @@ using DataFrames
   end
 end
 
+@fixture code_error_cell_pair params=((0, "#NULL!"), (7, "#DIV/0!"), (23, "#REF!"), (42, "#N/A"),
+                                      (29, "#NAME?"), (36, "#NUM!"),
+                                      (15, "#VALUE!")) function(request)
+  ExcelErrorCell(request.param[1]), request.param[2]
+end
+
 # specifies how a data frame should be read
 @fixture df_type params=[:verbose, :whole_sheet, :no_header, :with_colnames,
                          :verbose_overriden, :whole_overriden] function(request)
@@ -85,14 +91,11 @@ end
     @test takebuf_string(buffer) == "ExcelFile <TestData.xlsx>"
   end
 
-  #FIXME: apply a parametrized fixture here?
-  @pytest function excelerrorcell()
-    for (k,v) in Dict(0=>"#NULL!",7=>"#DIV/0!",23 => "#REF!",42=>"#N/A",29=>"#NAME?",36=>"#NUM!",15=>"#VALUE!")
-        errorcell = ExcelErrorCell(k)
-        buffer = IOBuffer()
-        show(buffer, errorcell)
-        @test takebuf_string(buffer) == v
-    end
+  @pytest function excelerrorcell(code_error_cell_pair)
+    errorcell, v = code_error_cell_pair
+    buffer = IOBuffer()
+    show(buffer, errorcell)
+    @test takebuf_string(buffer) == v
   end
 
   @pytest function reading_toarray(readable)
