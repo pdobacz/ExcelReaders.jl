@@ -18,18 +18,32 @@ using DataFrames
   end
 end
 
-@fixture full_df params=[(readxl, "Sheet1!C3:O7"),
-                         (readxlsheet, "Sheet1")] function(request, readable)
-  read_function, sheet = request.param
-  read_function(DataFrame, readable, sheet)
+# specifies how a data frame should be read
+@fixture df_type params=[:verbose, :whole_sheet, :no_header, :with_colnames] function(request)
+  request.param
 end
 
-@fixture df_noheader function(readable)
-  readxl(DataFrame, readable, "Sheet1!C4:O7", header=false)
+# the data frame read in a specific way
+@fixture df function(df_type, readable, good_colnames)
+  if df_type == :verbose
+    readxl(DataFrame, readable, "Sheet1!C3:O7")
+  elseif df_type == :whole_sheet
+    readxlsheet(DataFrame, readable, "Sheet1")
+  elseif df_type == :no_header
+    readxl(DataFrame, readable, "Sheet1!C4:O7", header=false)
+  elseif df_type == :with_colnames
+    readxl(DataFrame, readable, "Sheet1!C4:O7", header=false, colnames=good_colnames)
+  else
+    error("unknown df_type $df_type")
+  end
 end
 
-@fixture df_noheader_colnames function(readable, good_colnames)
-  readxl(DataFrame, readable, "Sheet1!C4:O7", header=false, colnames=good_colnames)
+# the way of referencing columns of a particular kind of data frame
+@fixture colrefs function(df_type, file_colnames, colnumbers, good_colnames)
+  Dict(:verbose => file_colnames,
+       :whole_sheet => file_colnames,
+       :no_header => colnumbers,
+       :with_colnames => good_colnames)[df_type]
 end
 
 @fixture file_colnames function()
@@ -49,15 +63,7 @@ end
   [:c1, :c2, :c3, :c4, :c5, :c6, :c7, :c8, :c9, :c10, :c11, :c12, :c13]
 end
 
-@fixture colnames_selector params=[:file, :numbers, :symbols] function(request) request.param end
-
-@fixture colnames function(colnames_selector, file_colnames, colnumbers, good_colnames)
-  Dict(:file => file_colnames, :numbers => colnumbers, :symbols => good_colnames)[colnames_selector]
-end
-
-@fixture df function(colnames_selector, full_df, df_noheader, df_noheader_colnames)
-  Dict(:file => full_df, :numbers => df_noheader, :symbols => df_noheader_colnames)[colnames_selector]
-end
+################### TESTS BEGIN HERE
 
 @testset "ExcelReaders tests" begin
 
@@ -107,36 +113,36 @@ end
     @test isna(data[5,12])
   end
 
-  @pytest function reading(df, colnames)
+  @pytest function reading(df, colrefs)
     @test ncol(df) == 13
     @test nrow(df) == 4
-    @test isa(df[colnames[1]], DataVector{Float64})
-    @test isa(df[colnames[2]], DataVector{Compat.UTF8String})
-    @test isa(df[colnames[3]], DataVector{Bool})
-    @test isa(df[colnames[4]], DataVector{Any})
-    @test isa(df[colnames[5]], DataVector{Any})
-    @test isa(df[colnames[9]], DataVector{Any})
-    @test isa(df[colnames[10]], DataVector{Any})
-    @test df[4,colnames[1]] == 2.5
-    @test df[4,colnames[2]] == "DDDD"
-    @test df[4,colnames[3]] == true
-    @test df[1,colnames[4]] == 2.0
-    @test df[2,colnames[4]] == "EEEEE"
-    @test df[3,colnames[4]] == false
-    @test isna(df[3,colnames[5]])
-    @test df[1,colnames[6]] == 3.
-    @test isna(df[2,colnames[6]])
-    @test df[1,colnames[7]] == "FF"
-    @test isna(df[2,colnames[7]])
-    @test df[2,colnames[8]] == true
-    @test isna(df[1,colnames[8]])
-    @test df[1,colnames[10]] == Date(1965,4,3)
-    @test df[2,colnames[9]] == DateTime(2015,2,4,10,14)
-    @test df[4,colnames[9]] == ExcelReaders.Time(15,2,0)
-    @test isna(df[4,colnames[10]])
+    @test isa(df[colrefs[1]], DataVector{Float64})
+    @test isa(df[colrefs[2]], DataVector{Compat.UTF8String})
+    @test isa(df[colrefs[3]], DataVector{Bool})
+    @test isa(df[colrefs[4]], DataVector{Any})
+    @test isa(df[colrefs[5]], DataVector{Any})
+    @test isa(df[colrefs[9]], DataVector{Any})
+    @test isa(df[colrefs[10]], DataVector{Any})
+    @test df[4,colrefs[1]] == 2.5
+    @test df[4,colrefs[2]] == "DDDD"
+    @test df[4,colrefs[3]] == true
+    @test df[1,colrefs[4]] == 2.0
+    @test df[2,colrefs[4]] == "EEEEE"
+    @test df[3,colrefs[4]] == false
+    @test isna(df[3,colrefs[5]])
+    @test df[1,colrefs[6]] == 3.
+    @test isna(df[2,colrefs[6]])
+    @test df[1,colrefs[7]] == "FF"
+    @test isna(df[2,colrefs[7]])
+    @test df[2,colrefs[8]] == true
+    @test isna(df[1,colrefs[8]])
+    @test df[1,colrefs[10]] == Date(1965,4,3)
+    @test df[2,colrefs[9]] == DateTime(2015,2,4,10,14)
+    @test df[4,colrefs[9]] == ExcelReaders.Time(15,2,0)
+    @test isna(df[4,colrefs[10]])
     # TODO Add a test that checks the error code, not just type
-    @test isa(df[1,colnames[11]], ExcelErrorCell)
-    @test isna(df[4,colnames[12]])
+    @test isa(df[1,colrefs[11]], ExcelErrorCell)
+    @test isna(df[4,colrefs[12]])
   end
 
   @pytest function overriding_colnames(readable, good_colnames)
