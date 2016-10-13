@@ -19,32 +19,34 @@ using DataFrames
 end
 
 # specifies how a data frame should be read
-@fixture df_type params=[:verbose, :whole_sheet, :no_header, :with_colnames] function(request)
+@fixture df_type params=[:verbose, :whole_sheet, :no_header, :with_colnames,
+                         :verbose_overriden, :whole_overriden] function(request)
   request.param
 end
 
-# the data frame read in a specific way
-@fixture df function(df_type, readable, good_colnames)
+@fixture df_colref_pairs function(df_type, readable, file_colnames, colnumbers, good_colnames)
   if df_type == :verbose
-    readxl(DataFrame, readable, "Sheet1!C3:O7")
+    readxl(DataFrame, readable, "Sheet1!C3:O7"), file_colnames
   elseif df_type == :whole_sheet
-    readxlsheet(DataFrame, readable, "Sheet1")
+    readxlsheet(DataFrame, readable, "Sheet1"), file_colnames
   elseif df_type == :no_header
-    readxl(DataFrame, readable, "Sheet1!C4:O7", header=false)
+    readxl(DataFrame, readable, "Sheet1!C4:O7", header=false), colnumbers
   elseif df_type == :with_colnames
-    readxl(DataFrame, readable, "Sheet1!C4:O7", header=false, colnames=good_colnames)
+    readxl(DataFrame, readable, "Sheet1!C4:O7", header=false, colnames=good_colnames), good_colnames
+  elseif df_type == :verbose_overriden
+    readxl(DataFrame, readable, "Sheet1!C3:O7", header=true, colnames=good_colnames), good_colnames
+  elseif df_type == :whole_overriden
+    readxlsheet(DataFrame, readable, "Sheet1", header=true, colnames=good_colnames), good_colnames
   else
     error("unknown df_type $df_type")
   end
 end
 
+# the data frame read in a specific way
+@fixture df function(df_colref_pairs) return df_colref_pairs[1] end
+
 # the way of referencing columns of a particular kind of data frame
-@fixture colrefs function(df_type, file_colnames, colnumbers, good_colnames)
-  Dict(:verbose => file_colnames,
-       :whole_sheet => file_colnames,
-       :no_header => colnumbers,
-       :with_colnames => good_colnames)[df_type]
-end
+@fixture colrefs function(df_colref_pairs) return df_colref_pairs[2] end
 
 @fixture file_colnames function()
   [ Symbol("Some Float64s"), Symbol("Some Strings"), Symbol("Some Bools"),
@@ -143,41 +145,6 @@ end
     # TODO Add a test that checks the error code, not just type
     @test isa(df[1,colrefs[11]], ExcelErrorCell)
     @test isna(df[4,colrefs[12]])
-  end
-
-  @pytest function overriding_colnames(readable, good_colnames)
-    full_dfs = [readxl(DataFrame, readable, "Sheet1!C3:O7", header=true, colnames=good_colnames),
-                readxlsheet(DataFrame, readable, "Sheet1", header=true, colnames=good_colnames)]
-    for df in full_dfs
-        @test ncol(df) == 13
-        @test nrow(df) == 4
-        @test isa(df[:c1], DataVector{Float64})
-        @test isa(df[:c2], DataVector{Compat.UTF8String})
-        @test isa(df[:c3], DataVector{Bool})
-        @test isa(df[:c4], DataVector{Any})
-        @test isa(df[:c5], DataVector{Any})
-        @test isa(df[:c9], DataVector{Any})
-        @test isa(df[:c10], DataVector{Any})
-        @test df[4,:c1] == 2.5
-        @test df[4,:c2] == "DDDD"
-        @test df[4,:c3] == true
-        @test df[1,:c4] == 2.0
-        @test df[2,:c4] == "EEEEE"
-        @test df[3,:c4] == false
-        @test isna(df[3,:c5])
-        @test df[1,:c6] == 3.
-        @test isna(df[2,:c6])
-        @test df[1,:c7] == "FF"
-        @test isna(df[2,:c7])
-        @test df[2,:c8] == true
-        @test isna(df[1,:c8])
-        @test df[1,:c10] == Date(1965,4,3)
-        @test df[2,:c9] == DateTime(2015,2,4,10,14)
-        @test df[4,:c9] == ExcelReaders.Time(15,2,0)
-        @test isna(df[4,:c10])
-        @test isa(df[1,:c11], ExcelErrorCell)
-        @test isna(df[4,:c12])
-    end
   end
 
   @pytest function toofewcolnames(readable)
