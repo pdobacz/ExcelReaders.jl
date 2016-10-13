@@ -65,6 +65,10 @@ end
   [:c1, :c2, :c3, :c4, :c5, :c6, :c7, :c8, :c9, :c10, :c11, :c12, :c13]
 end
 
+@fixture sheetinfo params=["Second Sheet", 2] function(request)
+  request.param
+end
+
 ################### TESTS BEGIN HERE
 
 @testset "ExcelReaders tests" begin
@@ -172,65 +176,63 @@ end
     end
   end
 
-  @pytest function readxlsheet_succesful(readable)
-    for sheetinfo=["Second Sheet", 2]
-        data = readxlsheet(readable, sheetinfo)
-        @test size(data) == (6, 6)
-        @test data[2,1] == 1.
-        @test data[5,2] == "CCC"
-        @test data[3,3] == false
-        @test data[6,6] == ExcelReaders.Time(15,2,00)
-        @test isna(data[4,3])
-        @test isna(data[4,6])
+  @pytest function readxlsheet_succesful(readable, sheetinfo)
+    data = readxlsheet(readable, sheetinfo)
+    @test size(data) == (6, 6)
+    @test data[2,1] == 1.
+    @test data[5,2] == "CCC"
+    @test data[3,3] == false
+    @test data[6,6] == ExcelReaders.Time(15,2,00)
+    @test isna(data[4,3])
+    @test isna(data[4,6])
 
-        data = readxlsheet(readable, sheetinfo, skipstartrows=:blanks, skipstartcols=:blanks)
-        @test size(data) == (6, 6)
-        @test data[2,1] == 1.
-        @test data[5,2] == "CCC"
-        @test data[3,3] == false
-        @test data[6,6] == ExcelReaders.Time(15,2,00)
-        @test isna(data[4,3])
-        @test isna(data[4,6])
+    data = readxlsheet(readable, sheetinfo, skipstartrows=:blanks, skipstartcols=:blanks)
+    @test size(data) == (6, 6)
+    @test data[2,1] == 1.
+    @test data[5,2] == "CCC"
+    @test data[3,3] == false
+    @test data[6,6] == ExcelReaders.Time(15,2,00)
+    @test isna(data[4,3])
+    @test isna(data[4,6])
 
-        data = readxlsheet(readable, sheetinfo, skipstartrows=0, skipstartcols=0)
-        @test size(data) == (6+7, 6+3)
-        @test data[2+7,1+3] == 1.
-        @test data[5+7,2+3] == "CCC"
-        @test data[3+7,3+3] == false
-        @test data[6+7,6+3] == ExcelReaders.Time(15,2,00)
-        @test isna(data[4+7,3+3])
-        @test isna(data[4+7,6+3])
+    data = readxlsheet(readable, sheetinfo, skipstartrows=0, skipstartcols=0)
+    @test size(data) == (6+7, 6+3)
+    @test data[2+7,1+3] == 1.
+    @test data[5+7,2+3] == "CCC"
+    @test data[3+7,3+3] == false
+    @test data[6+7,6+3] == ExcelReaders.Time(15,2,00)
+    @test isna(data[4+7,3+3])
+    @test isna(data[4+7,6+3])
 
-        data = readxlsheet(readable, sheetinfo, skipstartrows=0, )
-        @test size(data) == (6+7, 6)
-        @test data[2+7,1] == 1.
-        @test data[5+7,2] == "CCC"
-        @test data[3+7,3] == false
-        @test data[6+7,6] == ExcelReaders.Time(15,2,00)
-        @test isna(data[4+7,3])
-        @test isna(data[4+7,6])
+    data = readxlsheet(readable, sheetinfo, skipstartrows=0, )
+    @test size(data) == (6+7, 6)
+    @test data[2+7,1] == 1.
+    @test data[5+7,2] == "CCC"
+    @test data[3+7,3] == false
+    @test data[6+7,6] == ExcelReaders.Time(15,2,00)
+    @test isna(data[4+7,3])
+    @test isna(data[4+7,6])
 
-        data = readxlsheet(readable, sheetinfo, skipstartcols=0)
-        @test size(data) == (6, 6+3)
-        @test data[2,1+3] == 1.
-        @test data[5,2+3] == "CCC"
-        @test data[3,3+3] == false
-        @test data[6,6+3] == ExcelReaders.Time(15,2,00)
-        @test isna(data[4,3+3])
-        @test isna(data[4,6+3])
+    data = readxlsheet(readable, sheetinfo, skipstartcols=0)
+    @test size(data) == (6, 6+3)
+    @test data[2,1+3] == 1.
+    @test data[5,2+3] == "CCC"
+    @test data[3,3+3] == false
+    @test data[6,6+3] == ExcelReaders.Time(15,2,00)
+    @test isna(data[4,3+3])
+    @test isna(data[4,6+3])
 
-        data = readxlsheet(readable, sheetinfo, skipstartrows=1, skipstartcols=1, nrows=11, ncols=7)
-        @test size(data) == (11, 7)
-        @test data[2+6,1+2] == 1.
-        @test data[5+6,2+2] == "CCC"
-        @test data[3+6,3+2] == false
-        @test_throws BoundsError data[6+6,6+2] == ExcelReaders.Time(15,2,00)
-        @test isna(data[4+6,2+2])
-    end
+    data = readxlsheet(readable, sheetinfo, skipstartrows=1, skipstartcols=1, nrows=11, ncols=7)
+    @test size(data) == (11, 7)
+    @test data[2+6,1+2] == 1.
+    @test data[5+6,2+2] == "CCC"
+    @test data[3+6,3+2] == false
+    @test_throws BoundsError data[6+6,6+2] == ExcelReaders.Time(15,2,00)
+    @test isna(data[4+6,2+2])
   end
 
-  @pytest function I_needtocheck_whats_this(file)
-    @test_throws ErrorException readxl(DataFrame, file, "Sheet2!C5:E7")
+  @pytest function I_needtocheck_whats_this(readable)
+    @test_throws ErrorException readxl(DataFrame, readable, "Sheet2!C5:E7")
   end
 
 end
