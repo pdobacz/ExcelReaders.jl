@@ -18,10 +18,18 @@ using DataFrames
   end
 end
 
-@fixture full_dfs function(readable)
-  [ readxl(DataFrame, readable, "Sheet1!C3:O7"),
-    readxlsheet(DataFrame, readable, "Sheet1")
-  ]
+@fixture full_df params=[(readxl, "Sheet1!C3:O7"),
+                         (readxlsheet, "Sheet1")] function(request, readable)
+  read_function, sheet = request.param
+  read_function(DataFrame, readable, sheet)
+end
+
+@fixture df_noheader function(readable)
+  readxl(DataFrame, readable, "Sheet1!C4:O7", header=false)
+end
+
+@fixture df_noheader_colnames function(readable, good_colnames)
+  readxl(DataFrame, readable, "Sheet1!C4:O7", header=false, colnames=good_colnames)
 end
 
 @fixture good_colnames function()
@@ -76,44 +84,43 @@ end
     @test isna(data[5,12])
   end
 
-  @pytest function reading_todf(full_dfs)
+  @pytest function reading_todf(full_df)
 
-    for df in full_dfs
-        @test ncol(df) == 13
-        @test nrow(df) == 4
-        @test isa(df[Symbol("Some Float64s")], DataVector{Float64})
-        @test isa(df[Symbol("Some Strings")], DataVector{Compat.UTF8String})
-        @test isa(df[Symbol("Some Bools")], DataVector{Bool})
-        @test isa(df[Symbol("Mixed column")], DataVector{Any})
-        @test isa(df[Symbol("Mixed with NA")], DataVector{Any})
-        @test isa(df[Symbol("Some dates")], DataVector{Any})
-        @test isa(df[Symbol("Dates with NA")], DataVector{Any})
-        @test df[4,Symbol("Some Float64s")] == 2.5
-        @test df[4,Symbol("Some Strings")] == "DDDD"
-        @test df[4,Symbol("Some Bools")] == true
-        @test df[1,Symbol("Mixed column")] == 2.0
-        @test df[2,Symbol("Mixed column")] == "EEEEE"
-        @test df[3,Symbol("Mixed column")] == false
-        @test isna(df[3,Symbol("Mixed with NA")])
-        @test df[1,Symbol("Float64 with NA")] == 3.
-        @test isna(df[2,Symbol("Float64 with NA")])
-        @test df[1,Symbol("String with NA")] == "FF"
-        @test isna(df[2,Symbol("String with NA")])
-        @test df[2,Symbol("Bool with NA")] == true
-        @test isna(df[1,Symbol("Bool with NA")])
-        @test df[1,Symbol("Dates with NA")] == Date(1965,4,3)
-        @test df[2,Symbol("Some dates")] == DateTime(2015,2,4,10,14)
-        @test df[4,Symbol("Some dates")] == ExcelReaders.Time(15,2,0)
-        @test isna(df[4,Symbol("Dates with NA")])
-        # TODO Add a test that checks the error code, not just type
-        @test isa(df[1,Symbol("Some errors")], ExcelErrorCell)
-        @test isna(df[4,Symbol("Errors with NA")])
-    end
+    df = full_df
+    @test ncol(df) == 13
+    @test nrow(df) == 4
+    @test isa(df[Symbol("Some Float64s")], DataVector{Float64})
+    @test isa(df[Symbol("Some Strings")], DataVector{Compat.UTF8String})
+    @test isa(df[Symbol("Some Bools")], DataVector{Bool})
+    @test isa(df[Symbol("Mixed column")], DataVector{Any})
+    @test isa(df[Symbol("Mixed with NA")], DataVector{Any})
+    @test isa(df[Symbol("Some dates")], DataVector{Any})
+    @test isa(df[Symbol("Dates with NA")], DataVector{Any})
+    @test df[4,Symbol("Some Float64s")] == 2.5
+    @test df[4,Symbol("Some Strings")] == "DDDD"
+    @test df[4,Symbol("Some Bools")] == true
+    @test df[1,Symbol("Mixed column")] == 2.0
+    @test df[2,Symbol("Mixed column")] == "EEEEE"
+    @test df[3,Symbol("Mixed column")] == false
+    @test isna(df[3,Symbol("Mixed with NA")])
+    @test df[1,Symbol("Float64 with NA")] == 3.
+    @test isna(df[2,Symbol("Float64 with NA")])
+    @test df[1,Symbol("String with NA")] == "FF"
+    @test isna(df[2,Symbol("String with NA")])
+    @test df[2,Symbol("Bool with NA")] == true
+    @test isna(df[1,Symbol("Bool with NA")])
+    @test df[1,Symbol("Dates with NA")] == Date(1965,4,3)
+    @test df[2,Symbol("Some dates")] == DateTime(2015,2,4,10,14)
+    @test df[4,Symbol("Some dates")] == ExcelReaders.Time(15,2,0)
+    @test isna(df[4,Symbol("Dates with NA")])
+    # TODO Add a test that checks the error code, not just type
+    @test isa(df[1,Symbol("Some errors")], ExcelErrorCell)
+    @test isna(df[4,Symbol("Errors with NA")])
   end
 
-  @pytest function reading_noheader(readable, good_colnames)
+  @pytest function reading_noheader(df_noheader)
 
-    df = readxl(DataFrame, readable, "Sheet1!C4:O7", header=false)
+    df = df_noheader
     @test ncol(df) == 13
     @test nrow(df) == 4
     @test isa(df[1], DataVector{Float64})
@@ -143,8 +150,10 @@ end
     # TODO Add a test that checks the error code, not just type
     @test isa(df[1,11], ExcelErrorCell)
     @test isna(df[4,12])
+  end
 
-    df = readxl(DataFrame, readable, "Sheet1!C4:O7", header=false, colnames=good_colnames)
+  @pytest function reading_noheader_colnames(good_colnames, df_noheader_colnames)
+    df = df_noheader_colnames
     @test ncol(df) == 13
     @test nrow(df) == 4
     @test isa(df[:c1], DataVector{Float64})
